@@ -28,6 +28,9 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QTimer>
+#include <QMenu>
+#include <QSystemTrayIcon>
+#include <QCloseEvent>
 
 namespace Ui {
 class MainWindow;
@@ -44,6 +47,10 @@ public:
 private slots:
     void handleClickOnLoginBtn();
     void sendData();
+    void httpFinishedLogout();
+    void logoutAndClose();
+    void logout();
+    void closeEvent(QCloseEvent *event);
 
 private:
     Ui::MainWindow *ui;
@@ -53,9 +60,13 @@ private:
     void httpReadyRead();
     void httpFinished();
     void expireLogin();
-    void toggleUI(bool enabled);
     bool isLoggedIn;
+    QMenu *trayMenu;
+    QSystemTrayIcon *trayIcon;
     QTimer *timer;
+    QAction *exitAction;
+    QAction *logoutAction;
+    bool exitAfterReceive;
 };
 
 #endif // MAINWINDOW_H

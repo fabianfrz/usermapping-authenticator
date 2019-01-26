@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>OPNsense Authenticator</string>
+   <string>OPNsense Network Authenticator</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <widget class="QPushButton" name="pushButton">
@@ -58,6 +58,9 @@
       <width>231</width>
       <height>32</height>
      </rect>
+    </property>
+    <property name="echoMode">
+     <enum>QLineEdit::NoEcho</enum>
     </property>
    </widget>
    <widget class="QLabel" name="label_2">
@@ -127,6 +130,9 @@
       <height>32</height>
      </rect>
     </property>
+    <property name="placeholderText">
+     <string>https://192.168.1.1</string>
+    </property>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
@@ -141,6 +147,13 @@
   </widget>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <tabstops>
+  <tabstop>username</tabstop>
+  <tabstop>password</tabstop>
+  <tabstop>base_url</tabstop>
+  <tabstop>poll_seconds</tabstop>
+  <tabstop>pushButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
