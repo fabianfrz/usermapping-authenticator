@@ -31,6 +31,7 @@
 #include <QMenu>
 #include <QSystemTrayIcon>
 #include <QCloseEvent>
+#include "informationdialog.h"
 
 namespace Ui {
 class MainWindow;
@@ -51,6 +52,7 @@ private slots:
     void logoutAndClose();
     void logout();
     void closeEvent(QCloseEvent *event);
+    void showInfoDialog();
 
 private:
     Ui::MainWindow *ui;
@@ -66,7 +68,9 @@ private:
     QTimer *timer;
     QAction *exitAction;
     QAction *logoutAction;
+    QAction *showDialogAction;
     bool exitAfterReceive;
+    InformationDialog *infoDlg;
 };
 
 #endif // MAINWINDOW_H

@@ -23,11 +23,13 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "ui_informationdialog.h"
 #include <QTextCodec>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMessageBox>
 #include <QCloseEvent>
+#include <QJsonArray>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -41,6 +43,7 @@ MainWindow::MainWindow(QWidget *parent) :
     exitAfterReceive = false;
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(sendData()));
+    infoDlg = new InformationDialog();
 
     // prefill the user field with the user found in the evironment variables
 #ifdef _WIN32
@@ -50,11 +53,15 @@ MainWindow::MainWindow(QWidget *parent) :
 #endif
 
     // system tray
-    this->logoutAction = new QAction(tr("&Log Out"), this);
+    logoutAction = new QAction(tr("&Log Out"), this);
     exitAction = new QAction(tr("Log Out and &Exit"), this);
-    connect(this->logoutAction, SIGNAL(triggered()), this, SLOT(logout()));
+    showDialogAction = new QAction(tr("&Status"), this);
+    connect(logoutAction, SIGNAL(triggered()), this, SLOT(logout()));
     connect(exitAction, SIGNAL(triggered()), this, SLOT(logoutAndClose()));
+    connect(showDialogAction, SIGNAL(triggered()), this, SLOT(showInfoDialog()));
     trayMenu = new QMenu(this);
+    trayMenu->addAction(showDialogAction);
+    showDialogAction->setEnabled(false);
     trayMenu->addAction(logoutAction);
     trayMenu->addAction(exitAction);
     trayIcon = new QSystemTrayIcon(this);
@@ -72,50 +79,79 @@ MainWindow::~MainWindow()
     delete exitAction;
     delete logoutAction;
     delete timer;
+    delete infoDlg;
 }
 void MainWindow::closeEvent (QCloseEvent *) {
     qApp->quit();
 }
+void MainWindow::showInfoDialog() {
+    infoDlg->show();
+}
 
 void MainWindow::handleClickOnLoginBtn() {
-    const QString url_string = this->ui->base_url->text().trimmed();
+    const QString url_string = ui->base_url->text().trimmed();
     if (url_string.isEmpty()) {
         return;
     }
 
-    const QUrl tmp_url = QUrl::fromUserInput(url_string);
+    const QUrl tmp_url = QUrl::fromUserInput(url_string + "/api/usermapping/session/login");
     if (!tmp_url.isValid()) {
         QMessageBox::information(this, tr("Error"), tr("Invalid URL: %1").arg(tmp_url.errorString()));
         return;
     }
-    this->url = tmp_url;
-    this->sendData();
+    url = tmp_url;
+    sendData();
 }
 
 void MainWindow::httpFinished(){
-    // echo "HTTP/1.0 200 OK\r\nContent-Type: application/json\r\nContent-Length: 18\r\n\r\n{\"error\": \"JSON\"}" | nc -l -p 3000
+    ui->pushButton->setEnabled(true);
     QByteArray qba = reply->readAll();
     qDebug() << qba << '\n';
+    qDebug() << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() << '\n';
     if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 200) {
         QJsonDocument loadDoc = QJsonDocument::fromJson(qba);
         QJsonObject const obj = loadDoc.object();
         if (obj["error"].isString()) {
-            if (!this->isLoggedIn) {
+            if (!isLoggedIn) {
                 QMessageBox::critical(this, tr("Error"), obj["error"].toString());
             }
             // in case of an error, do not keep the session alive (let it expire if it still exists)
-            this->expireLogin();
+            expireLogin();
         }
         else {
-            if (!this->isLoggedIn) {
-                this->timer->start(this->ui->poll_seconds->value() * 1000);
+            if (!isLoggedIn) {
+                timer->start(ui->poll_seconds->value() * 1000);
                 hide();
+                showDialogAction->setEnabled(true);
+            }
+            if (obj.contains("username") && obj.contains("groups") && obj.contains("valid_until") && obj.contains("ip_address"))
+            {
+                infoDlg->ui->username->setText(obj["username"].isString() ? obj["username"].toString() : "unknown");
+                QString groups = "";
+                if (obj["groups"].isArray()) {
+                    QJsonArray array = obj["groups"].toArray();
+                    for(int i = 0; i < array.size(); i++) {
+                        if (array.at(i).isString())
+                        {
+                            if (i != 0) {
+                                groups.append(", ");
+                            }
+                            groups.append(array.at(i).toString());
+                        }
+                    }
+                    if (array.size() == 0) {
+                        groups = "none";
+                    }
+                }
+                infoDlg->ui->groups->setText(groups.isEmpty() ? "unknown" : groups);
+                infoDlg->ui->valid_until->setText(obj["valid_until"].isString() ? obj["valid_until"].toString() : "unknown");
+                infoDlg->ui->ip_address->setText(obj["ip_address"].isString() ? obj["ip_address"].toString() : "unknown");
                 // update status information
             }
         }
     }
     else {
-        this->expireLogin();
+        expireLogin();
         QMessageBox::critical(this, tr("Error"), tr("A network error occured, your session will not be kept alive"));
     }
 }
@@ -131,12 +167,13 @@ void MainWindow::expireLogin() {
     isLoggedIn = false;
     show();
     timer->stop();
+    showDialogAction->setEnabled(false);
 }
 
 void MainWindow::sendData() {
-
+    ui->pushButton->setEnabled(false);
     QNetworkRequest request(url);
-    QString credentials = this->ui->username->text() + ":" + this->ui->password->text();
+    QString credentials = ui->username->text() + ":" + ui->password->text();
     QByteArray credential_bytes;
     credential_bytes.append(credentials);
     request.setRawHeader("User-Agent", "OPNsense Authenticator");
@@ -155,15 +192,15 @@ void MainWindow::logoutAndClose() {
 void MainWindow::logout() {
     isLoggedIn = false;
 
-    QNetworkRequest request(QUrl::fromUserInput(ui->base_url->text() + "/logout"));
-    QString credentials = this->ui->username->text() + ":" + ui->password->text();
+    QNetworkRequest request(QUrl::fromUserInput(ui->base_url->text() + "/api/usermapping/session/logout"));
+    QString credentials = ui->username->text() + ":" + ui->password->text();
     QByteArray credential_bytes;
     credential_bytes.append(credentials);
     request.setRawHeader("User-Agent", "OPNsense Authenticator");
     request.setRawHeader("Authorization", "Basic " + credential_bytes.toBase64());
-    if (reply != nullptr) {
-        delete reply;
-    }
+    //QSslConfiguration tlsconfig;
+    //tlsconfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    //request.setSslConfiguration(tlsconfig);
     reply = qnam.get(request);
     connect(reply, &QNetworkReply::finished, this, &MainWindow::httpFinishedLogout);
 }
