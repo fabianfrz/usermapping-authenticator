@@ -1,4 +1,4 @@
-# Authenticator for the os-usermapping plugin of OPNsense
+# Authenticator (unofficial) for the os-usermapping plugin of OPNsense
 
 ## build
 
