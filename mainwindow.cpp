@@ -178,6 +178,10 @@ void MainWindow::sendData() {
     credential_bytes.append(credentials);
     request.setRawHeader("User-Agent", "OPNsense Authenticator");
     request.setRawHeader("Authorization", "Basic " + credential_bytes.toBase64());
+    QSslConfiguration tlsconfig;
+    tlsconfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    tlsconfig.setProtocol(QSsl::TlsV1_2);
+    request.setSslConfiguration(tlsconfig);
     reply = qnam.get(request);
     connect(reply, &QNetworkReply::finished, this, &MainWindow::httpFinished);
 }
@@ -198,9 +202,10 @@ void MainWindow::logout() {
     credential_bytes.append(credentials);
     request.setRawHeader("User-Agent", "OPNsense Authenticator");
     request.setRawHeader("Authorization", "Basic " + credential_bytes.toBase64());
-    //QSslConfiguration tlsconfig;
-    //tlsconfig.setPeerVerifyMode(QSslSocket::VerifyNone);
-    //request.setSslConfiguration(tlsconfig);
+    QSslConfiguration tlsconfig;
+    tlsconfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    tlsconfig.setProtocol(QSsl::TlsV1_2);
+    request.setSslConfiguration(tlsconfig);
     reply = qnam.get(request);
     connect(reply, &QNetworkReply::finished, this, &MainWindow::httpFinishedLogout);
 }
