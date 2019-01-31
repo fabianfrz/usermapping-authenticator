@@ -5,3 +5,7 @@
 qmake .
 make
 
+
+## Note
+
+This is not an official tool.
