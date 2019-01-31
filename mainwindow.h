@@ -62,6 +62,8 @@ private:
     void httpReadyRead();
     void httpFinished();
     void expireLogin();
+    void saveSettings();
+    void loadSettings();
     bool isLoggedIn;
     QMenu *trayMenu;
     QSystemTrayIcon *trayIcon;
@@ -71,6 +73,7 @@ private:
     QAction *showDialogAction;
     bool exitAfterReceive;
     InformationDialog *infoDlg;
+    QString settingsFile;
 };
 
 #endif // MAINWINDOW_H

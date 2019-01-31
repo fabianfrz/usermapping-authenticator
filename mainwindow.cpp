@@ -30,6 +30,8 @@
 #include <QMessageBox>
 #include <QCloseEvent>
 #include <QJsonArray>
+#include <QApplication>
+#include <QSettings>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -44,6 +46,7 @@ MainWindow::MainWindow(QWidget *parent) :
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(sendData()));
     infoDlg = new InformationDialog();
+    settingsFile = QApplication::applicationDirPath() + "/.config";
 
     // prefill the user field with the user found in the evironment variables
 #ifdef _WIN32
@@ -51,6 +54,7 @@ MainWindow::MainWindow(QWidget *parent) :
 #else
     ui->username->setText(qgetenv("USER"));
 #endif
+    loadSettings();
 
     // system tray
     logoutAction = new QAction(tr("&Log Out"), this);
@@ -88,6 +92,37 @@ void MainWindow::showInfoDialog() {
     infoDlg->show();
 }
 
+void MainWindow::loadSettings() {
+    QSettings settings(settingsFile, QSettings::NativeFormat);
+    QString text = settings.value("username", "").toString();
+    if (!text.isEmpty()) {
+        ui->username->setText(text);
+    }
+    text = settings.value("base_url", "").toString();
+    if (!text.isEmpty()) {
+        ui->base_url->setText(text);
+    }
+    text = settings.value("poll_interval", "").toString();
+    if (!text.isEmpty()) {
+        bool intok;
+        int tmp = text.toInt(&intok);
+        if (intok) {
+            ui->poll_seconds->setValue(tmp);
+        }
+    }
+    text = settings.value("validate_tls", "false").toString();
+    if (!text.isEmpty()) {
+        ui->validateServerCerts->setChecked(text != "false");
+    }
+}
+void MainWindow::saveSettings() {
+    QSettings settings(settingsFile, QSettings::NativeFormat);
+    settings.setValue("username", ui->username->text());
+    settings.setValue("base_url", ui->base_url->text());
+    settings.setValue("poll_seconds", ui->poll_seconds->text());
+    settings.setValue("validate_tls", ui->validateServerCerts->isChecked() ? "true" : "false");
+}
+
 void MainWindow::handleClickOnLoginBtn() {
     const QString url_string = ui->base_url->text().trimmed();
     if (url_string.isEmpty()) {
@@ -122,7 +157,9 @@ void MainWindow::httpFinished(){
             if (!isLoggedIn) {
                 timer->start(ui->poll_seconds->value() * 1000);
                 hide();
+                saveSettings();
                 showDialogAction->setEnabled(true);
+                isLoggedIn = true;
             }
             if (obj.contains("username") && obj.contains("groups") && obj.contains("valid_until") && obj.contains("ip_address"))
             {
@@ -193,6 +230,7 @@ void MainWindow::logoutAndClose() {
     exitAfterReceive = true;
     logout();
 }
+
 void MainWindow::logout() {
     isLoggedIn = false;
 
