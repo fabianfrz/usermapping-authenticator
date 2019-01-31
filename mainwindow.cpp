@@ -203,7 +203,7 @@ void MainWindow::logout() {
     request.setRawHeader("User-Agent", "OPNsense Authenticator");
     request.setRawHeader("Authorization", "Basic " + credential_bytes.toBase64());
     QSslConfiguration tlsconfig;
-    tlsconfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    tlsconfig.setPeerVerifyMode(ui->validateServerCerts->isChecked() ? QSslSocket::VerifyPeer : QSslSocket::VerifyNone);
     tlsconfig.setProtocol(QSsl::TlsV1_2);
     request.setSslConfiguration(tlsconfig);
     reply = qnam.get(request);
